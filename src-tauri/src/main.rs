@@ -24,7 +24,7 @@ fn main() {
             security::secure_retrieve,
             security::secure_delete,
             youtube::create_broadcast,
-            youtube::check_ffmpeg,
+            ffmpeg::check_ffmpeg,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

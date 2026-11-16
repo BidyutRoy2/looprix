@@ -13,6 +13,8 @@ export interface VideoItem {
   audioCodec?: string;
   width?: number;
   height?: number;
+  /** Set at add-time by probing the file; false = file no longer on disk. */
+  exists?: boolean;
 }
 
 export interface Preset {
@@ -57,12 +59,15 @@ export interface DoctorResult {
   audio: boolean;
   internet: boolean;
   streamKey: boolean;
+  /** FFmpeg sidecar check: true = found, false = not found, undefined = not checked yet. */
+  ffmpeg?: boolean;
+  ffmpegVersion?: string;
   ready: boolean;
   reasons: string[];
 }
 
 export const DEVELOPER_NAME = "Bidyut Roy";
 export const DEVELOPER_GITHUB = "https://github.com/BidyutRoy2";
-export const APP_VERSION = "0.1.0";
+export const APP_VERSION = "0.1.1";
 export const DEFAULT_RTMPS_URL = "rtmps://a.rtmps.youtube.com/live2";
 export const DEFAULT_RTMP_URL = "rtmp://a.rtmp.youtube.com/live2";

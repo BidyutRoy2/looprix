@@ -130,3 +130,141 @@ after the first Windows run of the renamed app.
 
 - A-09, A-10, A-11, A-12, A-15 (screenshot only): accepted, documented, honest. Nothing Critical/High
   remains open in code that was verifiable on this VM.
+
+---
+
+# Deep Audit — Looprix v0.1.1 (user-screenshot findings)
+
+Date: 2026-11-17. Auditor: fix subagent (source audit on Linux VM).
+Scope: the bugs the user reported from his real Windows run of v0.1.0
+(screenshots: Dashboard, Videos & Playlist, Preset, Schedule, Settings, OAuth card).
+Live YouTube with a real stream key was NEVER attempted. No real key was used anywhere.
+
+## Test evidence (v0.1.1)
+
+- `npm ci` (lockfile in sync after adding `@tauri-apps/plugin-dialog`): clean.
+- `npm test` (vitest): 37/37 PASS — presets (7), FFmpeg builder (6), security/redaction (5),
+  schedule (6), Stream Doctor (7), probe fallback (4), OAuth URL (2).
+- `npx tsc -b --noEmit`: clean.
+- `npm run build` (tsc + vite): clean, 43 modules, logo asset bundled (`logo-*.png` in dist/assets).
+- `cargo metadata` (full resolution): clean — `Cargo.lock` updated, `tauri-plugin-dialog 2.8.4`
+  (matches npm `2.8.4`), `tauri 2.12.6` and `tauri-plugin-opener 2.7.3` unchanged, looprix 0.1.1.
+- `rustfmt --check`: clean after formatting (one long `println!` in youtube.rs).
+- `cargo check`: NOT run on this VM — it needs the GTK/WebKit system libraries Tauri
+  requires on Linux and this VM lacks them (same environmental failure as v0.1.0, A-09).
+  The Windows runner does not need them (WebView2). Must be re-run by CI / the release
+  workflow on Windows. Rust code was verified by careful re-read + `cargo metadata`
+  resolution only — NOT by compilation.
+
+## Findings (all Fixed in v0.1.1 unless noted)
+
+### F-01 [Fixed] "+ Add Videos" added a fake entry
+No dialog plugin anywhere in v0.1.0; the button appended
+`{ path: "C:\\Videos\\New Video.mp4", title: "New Video", 600s, 100MB }`.
+Fix: `@tauri-apps/plugin-dialog ^2.8.4` (npm + lockfile) + `tauri-plugin-dialog = "2"`
+(Cargo + lockfile) + `.plugin(tauri_plugin_dialog::init())` in main.rs +
+`src-tauri/capabilities/default.json` (`core:default`, `opener:default`,
+`dialog:default`). The button now opens a real multi-select dialog filtered to
+mp4/mkv/mov/webm/avi/m4v.
+
+### F-02 [Fixed] Demo videos were hardcoded with fake paths
+`DEMO_VIDEOS` (Mountain Lakes Ambient 45:12, Forest Rain 30:00, Sunset Time-lapse
+22:18) pointed at `C:\Videos\...` files that do not exist on disk.
+Fix: deleted entirely. Playlist starts empty (localStorage `videos` key, Romanized
+Bengali empty-state line). New Rust `probe_video` (ffprobe sidecar, same sidecar
+lookup as ffmpeg) returns exists / duration / size / codec / audio / resolution;
+title = real file name. ffprobe missing → fs-metadata fallback (size known,
+duration 0). Per-row Remove + Clear playlist. Stored playlists are re-probed
+on startup.
+
+### F-03 [Fixed] GO LIVE never started FFmpeg
+`handleGoLive` only built args, logged, and set `live=true`; `handleStop` never
+called `stop_stream`; the concat file was never written.
+Fix: new Rust `write_playlist_file` (writes `playlist.txt` into the app data dir,
+returns its path). `handleGoLive` writes the file for multi-video playlists,
+invokes `start_stream` with the real args, and sets live=true ONLY on success
+(exact error logged otherwise). Stop invokes `stop_stream`. While live,
+`stream_status` is polled every 5s; a dead process logs once and triggers one
+auto-reconnect attempt when Auto-Reconnect is on.
+
+### F-04 [Fixed] Stream Doctor never checked anything real
+Video check was only an extension regex; `check_ffmpeg` existed in Rust but the
+frontend never called it.
+Fix: app startup invokes `check_ffmpeg` and shows an "FFmpeg" row (OK + version
+line, or red "not found"). Video check passes only if every video exists on
+disk (`VideoItem.exists`, set at add-time, re-probed on startup); a missing file
+blocks Go Live with `File ta PC te pawa jay nai: <title>`.
+
+### F-05 [Fixed] Stream Health was hardcoded
+"Excellent / 6000 kbps / 0 dropped / CPU 18%" showed even when Not live, and
+the live line claimed "128 viewers".
+Fix: not live → "Not streaming" with dashes for bitrate/dropped/CPU. Live →
+target bitrate from the preset (labelled as target) + real running state from
+`stream_status` + reconnect count. "128 viewers" deleted.
+
+### F-06 [Fixed] "+ Add Schedule" added a duplicate hardcoded entry
+Fix: real form (weekday dropdown, start/end time inputs, auto-start/auto-stop
+checkboxes, current playlist name + current preset), validated by
+`validateSchedule`, Delete per row. A due schedule actually starts the stream
+via the same start path as GO LIVE (only when Doctor is green); auto-stop ends
+it at the end time. One-start-per-day guard so the watcher cannot restart it
+in a loop.
+
+### F-07 [Fixed] OAuth "Connect with Google" only logged a message
+There was no Client ID field anywhere.
+Fix: Settings > YouTube API section with Client ID / Secret fields saved via
+`secureStore` (OS credential store only, never localStorage). "Connect with
+Google" opens the Google auth URL (youtube + youtube.force-ssl scopes,
+`access_type=offline`, `response_type=code`, `redirect_uri=urn:ietf:wg:oauth:2.0:oob`)
+in the external browser; "Paste the code from Google" + "Complete sign-in"
+exchange it via new Rust `exchange_oauth_code` (POST to
+oauth2.googleapis.com/token; tokens stored in the OS credential store only;
+channel title fetched best-effort). On success the topbar shows
+"OAuth — connected". In OAuth mode GO LIVE creates a real broadcast
+(unlisted) via the existing `create_broadcast` and streams to its ingest
+(the Rust command now also returns the full stream name in-memory; only the
+redacted form is ever logged). Manual stream-key path untouched and default.
+
+### F-08 [Fixed] "Add Custom Preset" could not rename or delete
+Fix: Rename (inline input + Save/Cancel) + Delete buttons for custom presets
+only; built-ins untouched; deleting the selected preset falls back to Waz.
+
+### F-09 [Fixed] ffprobe was not bundled
+Fix: release workflow copies `ffprobe.exe` from the gyan.dev essentials zip
+into `src-tauri/binaries/` (job fails if missing) and into the portable zip;
+`tauri.conf.json` resources list it; `scripts/build-windows.ps1` warns if absent.
+
+### F-10 [Fixed] Brand + credit looked unprofessional (user screenshots)
+The app had no real logo: sidebar showed a plain "BR" text circle, the About
+card was a bare text block, the footer repeated the credit a third time, and
+the Live Preview watermark was plain "Looprix" text.
+Fix: real logo (blue-to-violet loop arrow around a play triangle, red live dot,
+dark navy rounded square) from `looprix-brand/` — `src/assets/logo.png`
+(512x512, bundled by Vite), `src-tauri/icons/128x128.png`,
+`src-tauri/icons/icon.ico` (16/32/48/64/128/256 — verified with PIL).
+Sidebar shows the logo next to the Looprix wordmark + version line; the "BR"
+circle is gone. About is one polished card (logo mark, version, credit, GitHub
+link + button, tech stack, MIT License). Footer is one single clean line.
+"Developed by Bidyut Roy" + link `https://github.com/BidyutRoy2` remain in all
+three places (sidebar, About, footer) — restyled only, never removed or changed.
+
+### F-11 [Verified] Secret handling unchanged — PASS
+Stream key / OAuth tokens / Client Secret go only to the OS credential store
+(`secure_store` / `store_secret`); never localStorage, files or logs.
+`redactSecret` / `redactLogLine` (TS) and `redact()` (Rust) still hide full keys.
+Greps: no real-key patterns in `src/`, `src-tauri/`, docs (test fixtures use
+`abcd1234…` / `SECRETKEY` placeholders only).
+
+## Residuals (v0.1.1)
+
+- R-01: `cargo check` / `tauri build` were NOT run on this Linux VM (no GTK libs;
+  cargo itself is present at `~/.cargo/bin` and resolved the lockfile, but
+  compiling Tauri for Linux needs gdk-3.0 etc.). The Windows release workflow
+  (CI + Release runs) must verify compilation. Do NOT claim a Windows build.
+- R-02: Real YouTube live NOT verified (no real key/channel). OAuth token
+  exchange + broadcast creation are code-complete but need the user's own
+  Google Cloud client ID and a private/unlisted dry-run first.
+- R-03: `docs/screenshots/dashboard.png` is still the pre-rename design mockup —
+  replace after the first Windows run of v0.1.1 (it now also predates the logo).
+- R-04: v1.0 features remain intentionally absent (auto bitrate drop, 11h auto
+  restart, Ticker + Countdown, audio normalize −14 LUFS, multi-stream).

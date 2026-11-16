@@ -1,4 +1,4 @@
-# Security — Looprix v0.1.0
+# Security — Looprix v0.1.1
 
 ## Design rules
 

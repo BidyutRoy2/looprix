@@ -1,4 +1,4 @@
-# Build — Looprix v0.1.0 (Windows)
+# Build — Looprix v0.1.1 (Windows)
 
 Target: Windows 10/11 64-bit. The app is built with Tauri v2, so the Windows
 installer is produced **on Windows**. This Linux VM can typecheck, test, and
@@ -9,15 +9,15 @@ installer is produced **on Windows**. This Linux VM can typecheck, test, and
 Push a tag and GitHub builds the Windows `.exe` for you:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 Workflow `.github/workflows/release.yml` runs on `windows-latest`: Node 20,
 Rust stable, downloads Windows FFmpeg from gyan.dev (fails the job if the
 download breaks — never ships without ffmpeg), `npm ci` → `npm test` →
 `npm run build` → `npm run tauri build`, then packages
-`Looprix-Portable-0.1.0.zip` and publishes a GitHub Release with the
+`Looprix-Portable-0.1.1.zip` and publishes a GitHub Release with the
 NSIS `.exe`, the `.msi`, and the portable zip. A manual run
 (Actions → Release (Windows) → Run workflow) builds the same artifacts
 without creating a Release.
@@ -46,8 +46,8 @@ The script runs: `npm install` → `npm test` → `npm run build` → `cargo che
 Output:
 
 ```
-src-tauri\target\release\bundle\nsis\Looprix_0.1.0_x64-setup.exe
-src-tauri\target\release\bundle\msi\Looprix_0.1.0_x64_en-US.msi
+src-tauri\target\release\bundle\nsis\Looprix_0.1.1_x64-setup.exe
+src-tauri\target\release\bundle\msi\Looprix_0.1.1_x64_en-US.msi
 ```
 
 ## 3. Dev run (Windows)
@@ -73,5 +73,5 @@ Windows release.
 ## 5. Release checklist (owner)
 
 - [ ] Description + topics + social preview on the GitHub repo
-- [ ] Tag `v0.1.0`, create a GitHub Release, attach the `.exe` + this zip
+- [ ] Tag `v0.1.1`, create a GitHub Release, attach the `.exe` + this zip
 - [ ] Test the installer on a clean Windows 10/11 machine with a private/unlisted stream first

@@ -28,6 +28,19 @@ fn entry(key: &str) -> Result<Entry, String> {
     Entry::new(SERVICE, key).map_err(|e| format!("keyring error: {e}"))
 }
 
+/// Store a secret from another Rust module (e.g. OAuth tokens from
+/// `youtube::exchange_oauth_code`). Same OS credential store, same rules:
+/// never written to a file or a log.
+pub(crate) fn store_secret(key: &str, value: &str) -> Result<(), String> {
+    if key.trim().is_empty() || value.trim().is_empty() {
+        return Err("key/value must not be empty".into());
+    }
+    entry(key)?
+        .set_password(value)
+        .map_err(|e| format!("store failed: {e}"))?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn secure_store(key: String, value: String) -> Result<(), String> {
     if key.trim().is_empty() || value.trim().is_empty() {

@@ -13,6 +13,7 @@ pub struct AppState {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState {
             ffmpeg: Mutex::new(None),
         })
@@ -20,10 +21,13 @@ fn main() {
             ffmpeg::start_stream,
             ffmpeg::stop_stream,
             ffmpeg::stream_status,
+            ffmpeg::probe_video,
+            ffmpeg::write_playlist_file,
             security::secure_store,
             security::secure_retrieve,
             security::secure_delete,
             youtube::create_broadcast,
+            youtube::exchange_oauth_code,
             ffmpeg::check_ffmpeg,
         ])
         .run(tauri::generate_context!())

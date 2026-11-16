@@ -3,10 +3,13 @@
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path -Parent $MyInvocation.MyCommand.Path) | Out-Null
 Set-Location ..
-Write-Host "== Looprix v0.1.0 — Windows build =="
+Write-Host "== Looprix v0.1.1 — Windows build =="
 rustc --version; node --version; npm --version
 if (-not (Test-Path "src-tauri\binaries\ffmpeg.exe")) {
   Write-Warning "src-tauri\binaries\ffmpeg.exe not found — build will fall back to system ffmpeg on PATH. Copy a Windows ffmpeg.exe there for a self-contained app."
+}
+if (-not (Test-Path "src-tauri\binaries\ffprobe.exe")) {
+  Write-Warning "src-tauri\binaries\ffprobe.exe not found — video probing will fall back to file size only. Copy a Windows ffprobe.exe there for full probing."
 }
 npm install
 npm test

@@ -136,17 +136,23 @@ pub async fn exchange_oauth_code(
     }
 
     // Best effort: fetch the channel title so the UI can show it.
-    let channel_title = client
+    // (No .await inside a sync closure — parse the response in a match.)
+    let channel_resp = client
         .get(format!("{API_BASE}/channels?part=snippet&mine=true"))
         .header("Authorization", format!("Bearer {}", token.access_token))
         .send()
-        .await
-        .ok()
-        .and_then(|r| r.json::<ChannelsResp>().await.ok())
-        .and_then(|c| c.items)
-        .and_then(|mut items| items.pop())
-        .and_then(|i| i.snippet)
-        .and_then(|s| s.title);
+        .await;
+    let channel_title = match channel_resp {
+        Ok(resp) => resp
+            .json::<ChannelsResp>()
+            .await
+            .ok()
+            .and_then(|c| c.items)
+            .and_then(|mut items| items.pop())
+            .and_then(|i| i.snippet)
+            .and_then(|s| s.title),
+        Err(_) => None,
+    };
     println!(
         "[youtube] OAuth connected{}",
         channel_title

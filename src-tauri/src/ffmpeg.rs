@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
+use tauri::Manager;
 use tokio::process::{Child, Command};
 
 pub static RECONNECT_COUNT: AtomicU64 = AtomicU64::new(0);

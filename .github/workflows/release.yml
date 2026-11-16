@@ -2,7 +2,7 @@ name: Release (Windows)
 
 # Builds the Windows installer (.exe), .msi and portable zip on GitHub's
 # Windows runner and publishes them to a GitHub Release.
-# Trigger: push a tag like v0.1.0, or run manually from the Actions tab.
+# Trigger: push a tag like v0.1.1, or run manually from the Actions tab.
 on:
   push:
     tags:
@@ -27,9 +27,10 @@ jobs:
       - name: Setup Rust (stable, MSVC)
         uses: dtolnay/rust-toolchain@stable
 
-      # FFmpeg is bundled as a sidecar (src-tauri/binaries/ffmpeg.exe) so the
-      # installed app works offline. Fail loudly if the download breaks —
-      # never silently ship a build without ffmpeg.
+      # FFmpeg + ffprobe are bundled as sidecars (src-tauri/binaries/*.exe)
+      # so the installed app works offline and can probe real video files.
+      # Fail loudly if the download breaks — never silently ship a build
+      # without ffmpeg/ffprobe.
       - name: Download FFmpeg (Windows, gyan.dev essentials)
         shell: pwsh
         run: |
@@ -38,9 +39,13 @@ jobs:
           Expand-Archive -Path "$env:TEMP\ffmpeg.zip" -DestinationPath "$env:TEMP\ffmpeg"
           $exe = Get-ChildItem -Path "$env:TEMP\ffmpeg" -Recurse -Filter ffmpeg.exe | Select-Object -First 1
           if (-not $exe) { throw 'ffmpeg.exe not found in downloaded archive' }
+          $probe = Get-ChildItem -Path "$env:TEMP\ffmpeg" -Recurse -Filter ffprobe.exe | Select-Object -First 1
+          if (-not $probe) { throw 'ffprobe.exe not found in downloaded archive' }
           New-Item -ItemType Directory -Force -Path 'src-tauri\binaries' | Out-Null
           Copy-Item $exe.FullName 'src-tauri\binaries\ffmpeg.exe'
+          Copy-Item $probe.FullName 'src-tauri\binaries\ffprobe.exe'
           & 'src-tauri\binaries\ffmpeg.exe' -version | Select-Object -First 1
+          & 'src-tauri\binaries\ffprobe.exe' -version | Select-Object -First 1
 
       - name: Install dependencies
         run: npm ci
@@ -73,13 +78,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path 'Looprix-Portable' | Out-Null
           Copy-Item 'src-tauri\target\release\looprix.exe' 'Looprix-Portable\Looprix.exe'
           Copy-Item 'src-tauri\binaries\ffmpeg.exe' 'Looprix-Portable\ffmpeg.exe'
+          Copy-Item 'src-tauri\binaries\ffprobe.exe' 'Looprix-Portable\ffprobe.exe'
           @'
-          Looprix v0.1.0 — Portable (Windows 10/11 64-bit)
+          Looprix v0.1.1 — Portable (Windows 10/11 64-bit)
           =================================================
           No install needed. Unzip anywhere and double-click Looprix.exe.
 
           Requirements: WebView2 (preinstalled on Windows 10/11).
-          ffmpeg.exe must stay next to Looprix.exe.
+          ffmpeg.exe and ffprobe.exe must stay next to Looprix.exe.
 
           First run:
           1. YouTube Studio > Create > Go Live — enable live (first time can take 24h).
@@ -89,17 +95,17 @@ jobs:
 
           Developed by Bidyut Roy — https://github.com/BidyutRoy2
           '@ | Set-Content -Path 'Looprix-Portable\README-Portable.txt' -Encoding UTF8
-          Compress-Archive -Path 'Looprix-Portable\*' -DestinationPath 'Looprix-Portable-0.1.0.zip'
-          Get-Item 'Looprix-Portable-0.1.0.zip' | Select-Object Name, Length
+          Compress-Archive -Path 'Looprix-Portable\*' -DestinationPath 'Looprix-Portable-0.1.1.zip'
+          Get-Item 'Looprix-Portable-0.1.1.zip' | Select-Object Name, Length
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Looprix-Windows-0.1.0
+          name: Looprix-Windows-0.1.1
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
-            Looprix-Portable-0.1.0.zip
+            Looprix-Portable-0.1.1.zip
           if-no-files-found: error
 
       # Only a tag push creates the public Release. A manual dispatch just
@@ -111,5 +117,5 @@ jobs:
           files: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
-            Looprix-Portable-0.1.0.zip
+            Looprix-Portable-0.1.1.zip
           generate_release_notes: true

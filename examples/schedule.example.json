@@ -1,0 +1,10 @@
+{
+  "weekday": 5,
+  "startTime": "20:00",
+  "endTime": "23:00",
+  "playlistName": "Waz Playlist",
+  "presetId": "waz",
+  "autoStart": true,
+  "autoStop": true,
+  "enabled": true
+}

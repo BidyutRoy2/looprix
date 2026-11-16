@@ -1,0 +1,16 @@
+{
+  "id": "custom-amar-waz",
+  "name": "Amar Waz Live",
+  "builtin": false,
+  "resolution": "1920x1080",
+  "fps": 30,
+  "videoBitrateKbps": 6000,
+  "audioBitrateKbps": 128,
+  "normalizeAudio": true,
+  "overlayBadge": true,
+  "overlayLogo": true,
+  "loop": "all",
+  "latency": "low",
+  "titleTemplate": "Waz • Replay • [Name]",
+  "description": "My own Waz preset."
+}

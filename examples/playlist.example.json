@@ -1,0 +1,8 @@
+{
+  "name": "Waz Playlist",
+  "loop": "all",
+  "videos": [
+    { "path": "C:\\Videos\\Waz Part 1.mp4", "title": "Waz Part 1" },
+    { "path": "C:\\Videos\\Waz Part 2.mp4", "title": "Waz Part 2" }
+  ]
+}

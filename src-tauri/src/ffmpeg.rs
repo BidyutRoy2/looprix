@@ -95,11 +95,17 @@ pub async fn start_stream(
 
 #[tauri::command]
 pub async fn stop_stream(state: tauri::State<'_, AppState>) -> Result<String, String> {
-    let mut guard = state
-        .ffmpeg
-        .lock()
-        .map_err(|_| "state lock poisoned".to_string())?;
-    if let Some(mut s) = guard.take() {
+    // Take the running stream out and drop the MutexGuard BEFORE any await:
+    // holding a std::sync::MutexGuard across .await makes the future !Send,
+    // which Tauri commands reject at compile time.
+    let stream = {
+        let mut guard = state
+            .ffmpeg
+            .lock()
+            .map_err(|_| "state lock poisoned".to_string())?;
+        guard.take()
+    };
+    if let Some(mut s) = stream {
         let _ = s.child.kill().await;
         let _ = s.child.wait().await;
     }
